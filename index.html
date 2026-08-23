@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Todo Canto Pro</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#16263B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Todo Canto">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -227,6 +233,7 @@ tbody tr:hover{background:var(--paper);}
       <button data-page="extras"><span class="ico">✚</span> Extras</button>
       <button data-page="propostas"><span class="ico">✦</span> Propostas</button>
       <button data-page="comparativos"><span class="ico">⇄</span> Comparativos</button>
+      <button data-page="materiais"><span class="ico">▤</span> Materiais</button>
     </nav>
   </aside>
 
@@ -260,7 +267,7 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 const uid = () => 'id'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
-let clientes = [], destinos = [], hoteis = [], propostas = [], extras = [], aereos = [], comparativos = [];
+let clientes = [], destinos = [], hoteis = [], propostas = [], extras = [], aereos = [], comparativos = [], materiais = [];
 let config = { whatsapp:'85 99138-9490', email:'viajartodocanto@gmail.com', instagram:'@viajartodocanto' };
 
 // Carrega tudo do banco central ao abrir
@@ -274,6 +281,7 @@ async function loadAll(){
     sb.from('aereos').select('*').order('created_at',{ascending:false}),
   ]);
   try{ const cp=await sb.from('comparativos').select('*').order('created_at',{ascending:false}); comparativos=(cp.data||[]).map(mapComparativo); }catch(e){ comparativos=[]; }
+  try{ const mt=await sb.from('materiais').select('*').order('created_at',{ascending:false}); materiais=(mt.data||[]).map(mapMaterial); }catch(e){ materiais=[]; }
   clientes = (c.data||[]).map(mapCliente);
   destinos = (d.data||[]).map(mapDestino);
   hoteis   = (h.data||[]).map(mapHotel);
@@ -283,8 +291,9 @@ async function loadAll(){
 }
 
 // Conversores: banco (snake) -> app (camel)
+function mapMaterial(r){ return { id:r.id, nome:r.nome, categoria:r.categoria||'', url:r.url, tipo:r.tipo||'', criadoEm:r.created_at }; }
 function mapComparativo(r){ return { id:r.id, numero:r.numero, clienteId:r.cliente_id, consultor:r.consultor, titulo:r.titulo, opcoes:r.opcoes||[], observacoes:r.observacoes, criadoEm:r.created_at }; }
-function mapCliente(r){ return { id:r.id, nome:r.nome, telefone:r.telefone, email:r.email, empresa:r.empresa_ou_escola, origem:r.origem||'', obs:r.observacoes }; }
+function mapCliente(r){ return { id:r.id, nome:r.nome, telefone:r.telefone, email:r.email, empresa:r.empresa_ou_escola, origem:r.origem||'', aniversario:r.aniversario||'', obs:r.observacoes }; }
 function mapDestino(r){ const fotos=(r.biblioteca_midia||[]).filter(m=>m.categoria==='destino').sort((a,b)=>a.ordem-b.ordem).map(m=>m.url); return { id:r.id, nome:r.nome, descricao:r.descricao, roteiro:r.roteiro_padrao, diferenciais:r.diferenciais, fotos, capa:r.capa_url||fotos[0]||'' }; }
 function mapHotel(r){ const fotos=(r.biblioteca_midia||[]).filter(m=>m.categoria==='hotel').sort((a,b)=>a.ordem-b.ordem).map(m=>m.url); return { id:r.id, nome:r.nome, categoria:r.categoria, destinoId:r.destino_id, descricao:r.descricao, valor:Number(r.valor)||0, tipoQuarto:r.tipo_quarto||'', ocupacao:Number(r.ocupacao)||2, tiposQuarto:r.tipos_quarto||[], inclui:r.inclui||'', estrelas:Number(r.estrelas)||0, moeda:r.moeda||'BRL', fotos, capa:r.capa_url||fotos[0]||'' }; }
 function mapExtra(r){ return { id:r.id, nome:r.nome, tipo:r.tipo, destinoId:r.destino_id, moeda:r.moeda, valor:Number(r.valor)||0, valorCriancaColo:Number(r.valor_crianca_colo)||0, valorCrianca:Number(r.valor_crianca)||0, descricao:r.descricao }; }
@@ -296,6 +305,7 @@ function persist(){ /* salvamento agora é por operação no Supabase (ver funç
 /* ============ UTIL ============ */
 const moneySym = {BRL:'R$',USD:'US$',EUR:'€'};
 function fmtMoeda(v,m='BRL'){ return moneySym[m]+' '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtDataDiaMes(d){ if(!d) return '—'; const [y,mo,da]=d.split('-'); return da+'/'+mo; }
 function fmtData(d){ if(!d) return '—'; const [y,mo,da]=d.split('-'); return da+'/'+mo+'/'+y; }
 function periodo(a,b){ if(!a&&!b)return '—'; if(a&&b)return fmtData(a)+' a '+fmtData(b); return fmtData(a||b); }
 function dias(a,b){ if(!a||!b)return 0; return Math.max(0,Math.round((new Date(b)-new Date(a))/864e5)); }
@@ -336,10 +346,21 @@ function render(){
   else if(page==='cliente-ver') c.innerHTML=viewClienteDetalhe(currentClienteId);
   else if(page==='comparativos') c.innerHTML=viewComparativos();
   else if(page==='comparativo-ver') c.innerHTML=viewComparativoDetalhe(currentComparativoId);
+  else if(page==='materiais') c.innerHTML=viewMateriais();
 }
 
 /* ============ DASHBOARD ============ */
 
+
+// Aniversariantes do mês atual (pra lembrar de parabenizar)
+function aniversariantesDoMes(){
+  const mesAtual = new Date().getMonth()+1;
+  const hoje = new Date().getDate();
+  return clientes.filter(c=>c.aniversario).map(c=>{
+    const [y,m,d]=c.aniversario.split('-').map(Number);
+    return { cliente:c, mes:m, dia:d };
+  }).filter(x=>x.mes===mesAtual).sort((a,b)=>a.dia-b.dia).map(x=>({...x, hoje:x.dia===hoje}));
+}
 /* ============ COMPARATIVO DE OPÇÕES ============ */
 let currentComparativoId=null;
 let _cmpOpcoes=[]; // opções sendo editadas no modal
@@ -375,7 +396,7 @@ function opcaoCmpHTML(o,i){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="color:var(--orange-dark)">Opção ${i+1}</b>
       <button type="button" onclick="rmOpcaoCmp(${i})" style="border:none;background:none;color:var(--danger);font-size:18px;cursor:pointer">×</button></div>
     <div class="grid g2">
-      <div class="field" style="margin-bottom:8px"><label>Destino</label><select class="cmp-dest"><option value="">Selecione…</option>${destinos.map(d=>`<option value="${d.id}" ${o.destinoId===d.id?'selected':''}>${esc(d.nome)}</option>`).join('')}</select></div>
+      <div class="field" style="margin-bottom:8px"><label>Destino</label><input class="cmp-dest" value="${esc(o.destinoNome||'')}" placeholder="Ex: Cancún, Serra Gaúcha, Lisboa…"></div>
       <div class="field" style="margin-bottom:8px"><label>Valor</label><input type="number" class="cmp-valor" min="0" step="0.01" value="${o.valor||0}"></div>
     </div>
     <div class="field" style="margin-bottom:8px"><label>Resumo (o que inclui)</label><textarea class="cmp-resumo" placeholder="Ex: 5 noites em hotel 4★, café da manhã, city tour e transfer">${esc(o.resumo||'')}</textarea></div>
@@ -384,9 +405,10 @@ function opcaoCmpHTML(o,i){
 }
 function lerOpcoesCmp(){
   return Array.from(document.querySelectorAll('#cmp_opcoes .cmp-opcao')).map((el,i)=>{
-    const destId=el.querySelector('.cmp-dest').value;
-    const d=destinos.find(x=>x.id===destId);
-    return { destinoId:destId, destinoNome:d?d.nome:'', resumo:el.querySelector('.cmp-resumo').value.trim(), valor:+el.querySelector('.cmp-valor').value||0, moeda:'BRL', foto:_cmpOpcoes[i]?_cmpOpcoes[i].foto:'' };
+    const nome=el.querySelector('.cmp-dest').value.trim();
+    // tenta casar com um destino cadastrado (pra facilitar a proposta final), mas não obriga
+    const d=destinos.find(x=>(x.nome||'').toLowerCase()===nome.toLowerCase());
+    return { destinoId:d?d.id:'', destinoNome:nome, resumo:el.querySelector('.cmp-resumo').value.trim(), valor:+el.querySelector('.cmp-valor').value||0, moeda:'BRL', foto:_cmpOpcoes[i]?_cmpOpcoes[i].foto:'' };
   });
 }
 function addOpcaoCmp(){ _cmpOpcoes=lerOpcoesCmp(); _cmpOpcoes.push({destinoId:'',resumo:'',valor:0,moeda:'BRL',foto:''}); document.getElementById('cmp_opcoes').innerHTML=_cmpOpcoes.map((o,i)=>opcaoCmpHTML(o,i)).join(''); }
@@ -477,9 +499,75 @@ function criarPropostaDaOpcao(cmpId, idx){
       const selCli=document.getElementById('f_cli'); if(selCli&&c.clienteId){ selCli.value=c.clienteId; }
       const selDest=document.getElementById('f_dest'); if(selDest&&o.destinoId){ selDest.value=o.destinoId; renderListasProposta(); }
       const cons=document.getElementById('f_consultor'); if(cons&&c.consultor&&!cons.value){ cons.value=c.consultor; }
-      toast('Proposta iniciada com a opção escolhida');
+      toast(o.destinoId? 'Proposta iniciada com a opção escolhida' : 'Proposta iniciada — cadastre/escolha o destino "'+(o.destinoNome||'')+'"');
     },120);
   },60);
+}
+
+
+/* ============ MATERIAIS INSTITUCIONAIS ============ */
+function viewMateriais(){
+  const head=`<div class="page-head"><div><h1>Materiais</h1><p>Logos, artes e peças institucionais da Todo Canto</p></div>
+    <button class="btn" onclick="formMaterial()">＋ Adicionar material</button></div>`;
+  if(!materiais.length) return head+empty('Nenhum material ainda','Guarde aqui as logos, artes e peças institucionais pra baixar sempre que precisar.','＋ Adicionar material','formMaterial()');
+  // agrupa por categoria
+  const cats={};
+  materiais.forEach(m=>{ const k=m.categoria||'Geral'; (cats[k]=cats[k]||[]).push(m); });
+  let out=head;
+  Object.keys(cats).sort().forEach(cat=>{
+    out+=`<h2 class="serif" style="color:var(--ink);font-size:17px;margin:18px 0 12px">${esc(cat)}</h2><div class="cards">`;
+    out+=cats[cat].map(m=>{
+      const ehImg=/\.(png|jpe?g|gif|webp|svg)$/i.test(m.url||'')||m.tipo==='imagem';
+      return `<div class="tile">
+        <div class="thumb" style="${ehImg?`background-image:url('${m.url}');background-size:contain;background-repeat:no-repeat;background-color:var(--paper2)`:''}">${ehImg?'':'📄'}</div>
+        <div class="body">
+          <h3 style="font-size:15px">${esc(m.nome)}</h3>
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <a class="btn ghost sm" href="${m.url}" target="_blank" rel="noopener" download style="text-decoration:none">⤓ Baixar</a>
+            <button class="btn ghost sm" onclick="delMaterial('${m.id}')" style="color:var(--danger)">Excluir</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    out+=`</div>`;
+  });
+  return out;
+}
+let _matUrl='';
+function formMaterial(){
+  _matUrl='';
+  openModal('Adicionar material', `
+    <div class="field"><label>Nome do material</label><input id="mat_nome" placeholder="Ex: Logo horizontal PNG, Catálogo 2026"></div>
+    <div class="field"><label>Categoria</label><input id="mat_cat" list="matCats" placeholder="Ex: Logos, Artes, Contratos"><datalist id="matCats">${[...new Set(materiais.map(m=>m.categoria).filter(Boolean))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
+    <div class="field"><label>Arquivo</label><input type="file" id="mat_file" onchange="uploadMaterial(this)"><div id="mat_prev" style="margin-top:8px;font-size:13px;color:var(--n500)"></div></div>
+    <div class="row-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="salvarMaterial()">Salvar material</button></div>`);
+}
+async function uploadMaterial(input){
+  const file=input.files[0]; if(!file)return;
+  const prev=document.getElementById('mat_prev'); if(prev) prev.textContent='Enviando…';
+  try{
+    const path='materiais/'+Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9.]/g,'_');
+    const up=await sb.storage.from('midia').upload(path,file,{upsert:true});
+    if(up.error) throw up.error;
+    const { data:pub }=sb.storage.from('midia').getPublicUrl(path);
+    _matUrl=pub.publicUrl;
+    const nomeCampo=document.getElementById('mat_nome'); if(nomeCampo&&!nomeCampo.value) nomeCampo.value=file.name;
+    if(prev) prev.innerHTML='✓ Arquivo enviado';
+  }catch(e){ console.error(e); if(prev) prev.textContent='Erro ao enviar'; toast('Erro ao enviar arquivo'); }
+}
+async function salvarMaterial(){
+  const nome=val('mat_nome'); if(!nome){toast('Dê um nome ao material');return;}
+  if(!_matUrl){toast('Escolha o arquivo');return;}
+  const ehImg=/\.(png|jpe?g|gif|webp|svg)$/i.test(_matUrl);
+  const row={ nome, categoria:val('mat_cat')||'Geral', url:_matUrl, tipo:ehImg?'imagem':'arquivo' };
+  try{ await sb.from('materiais').insert(row); await loadAll(); closeModal(); toast('Material salvo'); render(); }
+  catch(e){ console.error(e); toast('Erro ao salvar'); }
+}
+async function delMaterial(id){
+  const m=materiais.find(x=>x.id===id);
+  if(!confirm('Excluir "'+(m?.nome||'')+'"?'))return;
+  try{ await sb.from('materiais').delete().eq('id',id); await loadAll(); toast('Excluído'); render(); }
+  catch(e){ console.error(e); toast('Erro ao excluir'); }
 }
 
 function viewDashboard(){
@@ -510,6 +598,15 @@ function viewDashboard(){
           <button class="btn ghost sm" onclick="event.stopPropagation();abrirFollowup('${p.id}')">Editar</button>
         </div>`; }).join('')}
     </div>`:''}
+  ${(()=>{ const nivs=aniversariantesDoMes(); if(!nivs.length) return '';
+    return `<div class="card pad" style="margin-bottom:22px;border-left:4px solid var(--yellow)">
+      <h2 class="serif" style="color:var(--ink);font-size:18px;margin:0 0 12px">🎂 Aniversariantes de ${['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][new Date().getMonth()]} <span style="font-size:13px;color:var(--n500);font-weight:400">(${nivs.length})</span></h2>
+      ${nivs.map(n=>{ const tel=(n.cliente.telefone||'').replace(/\D/g,''); return `<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:12px;transition:.14s" onmouseover="this.style.background='var(--paper)'" onmouseout="this.style.background='none'">
+        <span class="pill" style="background:${n.hoje?'var(--orange)1a':'var(--yellow-soft)'};color:${n.hoje?'var(--orange-dark)':'var(--warn)'};font-size:10px;font-weight:800">${n.hoje?'HOJE! 🎉':('dia '+String(n.dia).padStart(2,'0'))}</span>
+        <div style="flex:1"><b style="color:var(--ink)">${esc(n.cliente.nome)}</b></div>
+        ${tel?`<button class="btn ghost sm" onclick="window.open('https://wa.me/55${tel}','_blank')">✆ Parabenizar</button>`:''}
+      </div>`; }).join('')}
+    </div>`; })()}
   <div class="stats">
     <div class="stat a"><div class="ic">◈</div><div class="val mono">${propostas.length}</div><div class="lab">Propostas criadas</div></div>
     <div class="stat b"><div class="ic">✓</div><div class="val mono">${aprov}</div><div class="lab">Viagens fechadas</div></div>
@@ -573,12 +670,13 @@ function formCliente(id){
       <div class="field"><label>E-mail</label><input id="f_email" value="${esc(c.email||'')}"></div></div>
     <div class="grid g2"><div class="field"><label>Empresa ou escola</label><input id="f_emp" value="${esc(c.empresa||'')}"></div>
       <div class="field"><label>Origem (de onde veio)</label><select id="f_origem"><option value="">—</option>${ORIGENS_LEAD.map(o=>`<option value="${o}" ${c.origem===o?'selected':''}>${o}</option>`).join('')}</select></div></div>
+    <div class="field"><label>Aniversário (pra lembrar de parabenizar 🎂)</label><input type="date" id="f_aniv" value="${c.aniversario||''}"></div>
     <div class="field"><label>Observações</label><textarea id="f_obs">${esc(c.obs||'')}</textarea></div>
     <div class="row-actions"><button class="btn ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="saveCliente('${id||''}')">Salvar</button></div>`);
 }
 async function saveCliente(id){
   const nome=val('f_nome'); if(!nome){toast('Informe o nome');return;}
-  const row={ nome, telefone:val('f_tel'), email:val('f_email'), empresa_ou_escola:val('f_emp'), origem:val('f_origem'), observacoes:val('f_obs') };
+  const row={ nome, telefone:val('f_tel'), email:val('f_email'), empresa_ou_escola:val('f_emp'), origem:val('f_origem'), aniversario:val('f_aniv')||null, observacoes:val('f_obs') };
   try{
     if(id){ await sb.from('clientes').update(row).eq('id',id); }
     else { await sb.from('clientes').insert(row); }
@@ -1359,6 +1457,7 @@ function viewClienteDetalhe(id){
       <div>✉ ${esc(c.email||'—')}</div>
       <div>🏢 ${esc(c.empresa||'—')}</div>
       <div>📍 Origem: ${c.origem?esc(c.origem):'—'}</div>
+      ${c.aniversario?`<div>🎂 Aniversário: ${fmtDataDiaMes(c.aniversario)}</div>`:''}
     </div>
     ${c.obs?`<div style="margin-top:10px;font-size:13px;color:var(--n600);background:var(--n50);border-radius:8px;padding:10px">${nl2br(esc(c.obs))}</div>`:''}
   </div>
@@ -1855,6 +1954,8 @@ if(sessionStorage.getItem('tcp_ok')==='1'){
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter') tentarEntrar(); });
   inp.focus();
 }
+// registra o service worker (habilita instalar como app)
+if('serviceWorker' in navigator){ window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
 </script>
 </body>
 </html>
